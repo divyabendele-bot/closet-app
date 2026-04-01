@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 from closet import Closet
 from models import Top, Bottom, Shoes, Jacket
@@ -14,8 +13,8 @@ if "closet" not in st.session_state:
 if "generator" not in st.session_state:
     st.session_state.generator = OutfitGenerator()
 
-IMAGE_FOLDER = "images"
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
+if "save_counter" not in st.session_state:
+    st.session_state.save_counter = 0
 
 OCCASION_OPTIONS = [
     "Business",
@@ -30,12 +29,29 @@ WEATHER_OPTIONS = [
     "Cold"
 ]
 
+CATEGORY_OPTIONS = [
+    "Top",
+    "Bottom",
+    "Shoes",
+    "Jacket"
+]
+
+
+def clean_item_name(raw_name):
+    cleaned_name = raw_name.strip()
+
+    if " (" in cleaned_name:
+        cleaned_name = cleaned_name.split(" (")[0].strip()
+
+    return cleaned_name
+
+
 st.title("My Closet App 👕")
 st.write("Organize your closet and generate outfits.")
 
 option = st.selectbox(
     "Menu",
-    ["Add Item", "View Closet", "Remove Item", "Generate Outfit"]
+    ["Add Item", "View Closet", "Generate Outfit"]
 )
 
 # ------------------------
@@ -44,56 +60,57 @@ option = st.selectbox(
 if option == "Add Item":
     st.subheader("Add New Item")
 
-    name = st.text_input("Item name")
+    with st.form(key=f"add_item_form_{st.session_state.save_counter}", clear_on_submit=True):
+        name = st.text_input("Item name")
 
-    category = st.selectbox(
-        "Category",
-        ["Top", "Bottom", "Shoes", "Jacket"]
-    )
+        category = st.selectbox(
+            "Category",
+            CATEGORY_OPTIONS
+        )
 
-    occasions = st.multiselect(
-        "Occasions",
-        OCCASION_OPTIONS
-    )
+        occasions = st.multiselect(
+            "Occasions",
+            OCCASION_OPTIONS
+        )
 
-    weather_categories = st.multiselect(
-        "Weather",
-        WEATHER_OPTIONS
-    )
+        weather_categories = st.multiselect(
+            "Weather",
+            WEATHER_OPTIONS
+        )
 
-    image = st.file_uploader("Upload image", type=["jpg", "jpeg", "png"])
+        image = st.file_uploader("Upload image", type=["jpg", "jpeg", "png"])
 
-    if st.button("Save Item"):
-        if name.strip() == "":
-            st.warning("Please enter an item name.")
-        elif len(occasions) == 0:
-            st.warning("Please choose at least one occasion.")
-        elif len(weather_categories) == 0:
-            st.warning("Please choose at least one weather category.")
-        else:
-            image_path = None
+        save_clicked = st.form_submit_button("Save Item")
 
-            if image is not None:
-                image_path = os.path.join(IMAGE_FOLDER, image.name)
+        if save_clicked:
+            cleaned_name = clean_item_name(name)
 
-                with open(image_path, "wb") as f:
-                    f.write(image.getbuffer())
-
-            if category == "Top":
-                item = Top(name, occasions, weather_categories, image_path)
-            elif category == "Bottom":
-                item = Bottom(name, occasions, weather_categories, image_path)
-            elif category == "Shoes":
-                item = Shoes(name, occasions, weather_categories, image_path)
+            if cleaned_name == "":
+                st.warning("Please enter an item name.")
+            elif len(occasions) == 0:
+                st.warning("Please choose at least one occasion.")
+            elif len(weather_categories) == 0:
+                st.warning("Please choose at least one weather category.")
             else:
-                item = Jacket(name, occasions, weather_categories, image_path)
+                final_name = st.session_state.closet.generate_unique_name(cleaned_name)
 
-            st.session_state.closet.add_item(item)
-            st.success(f"{item.display()} saved!")
+                image_data = None
+                if image is not None:
+                    image_data = image.getvalue()
 
-# ------------------------
-# VIEW CLOSET SECTION
-# ------------------------
+                if category == "Top":
+                    item = Top(final_name, occasions, weather_categories, image_data)
+                elif category == "Bottom":
+                    item = Bottom(final_name, occasions, weather_categories, image_data)
+                elif category == "Shoes":
+                    item = Shoes(final_name, occasions, weather_categories, image_data)
+                else:
+                    item = Jacket(final_name, occasions, weather_categories, image_data)
+
+                st.session_state.closet.add_item(item)
+                st.success(f"Saved: {item.display()}")
+                st.session_state.save_counter += 1
+
 # ------------------------
 # VIEW CLOSET SECTION
 # ------------------------
@@ -103,68 +120,72 @@ elif option == "View Closet":
     item_count = st.session_state.closet.count_items()
     st.write(f"Total items in closet: {item_count}")
 
-    filter_category = st.selectbox(
-        "Filter by category",
-        ["All", "Top", "Bottom", "Shoes", "Jacket"]
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        filter_category = st.selectbox(
+            "Category",
+            ["All"] + CATEGORY_OPTIONS
+        )
+
+    with col2:
+        filter_occasion = st.selectbox(
+            "Occasion",
+            ["All"] + OCCASION_OPTIONS
+        )
+
+    with col3:
+        filter_weather = st.selectbox(
+            "Weather",
+            ["All"] + WEATHER_OPTIONS
+        )
+
+    with col4:
+        sort_order = st.selectbox(
+            "Sort",
+            ["A-Z", "Z-A"]
+        )
+
+    filtered_items = st.session_state.closet.get_filtered_items(
+        category=filter_category,
+        occasion=filter_occasion,
+        weather=filter_weather
     )
 
-    filter_occasion = st.selectbox(
-        "Filter by occasion",
-        ["All"] + OCCASION_OPTIONS
+    filtered_items = sorted(
+        filtered_items,
+        key=lambda item: item.get_name().lower(),
+        reverse=(sort_order == "Z-A")
     )
-
-    filter_weather = st.selectbox(
-        "Filter by weather",
-        ["All"] + WEATHER_OPTIONS
-    )
-
-    items = st.session_state.closet.get_all_items()
-    filtered_items = []
-
-    for item in items:
-        category_match = False
-        occasion_match = False
-        weather_match = False
-
-        if filter_category == "All" or item.get_category() == filter_category:
-            category_match = True
-
-        if filter_occasion == "All" or filter_occasion in item.get_occasions():
-            occasion_match = True
-
-        if filter_weather == "All" or filter_weather in item.get_weather_categories():
-            weather_match = True
-
-        if category_match and occasion_match and weather_match:
-            filtered_items.append(item)
 
     if not filtered_items:
-        st.write("No matching items found.")
+        st.info("No matching items found.")
     else:
         for item in filtered_items:
-            st.write(item.display())
+            st.markdown("---")
 
-            if item.get_image_path():
-                st.image(item.get_image_path(), width=150)
+            image_col, info_col, button_col = st.columns([1, 2, 1])
 
-# ------------------------
-# REMOVE ITEM SECTION
-# ------------------------
-elif option == "Remove Item":
-    st.subheader("Remove Item")
+            with image_col:
+                if item.get_image_data() is not None:
+                    st.image(item.get_image_data(), width=180)
+                else:
+                    st.write("No image uploaded")
 
-    remove_name = st.text_input("Enter the name of the item to remove")
+            with info_col:
+                st.markdown(f"### {item.get_name()}")
+                st.write(f"**Category:** {item.get_category()}")
+                st.write(f"**Occasions:** {', '.join(item.get_occasions())}")
+                st.write(f"**Weather:** {', '.join(item.get_weather_categories())}")
 
-    if st.button("Remove"):
-        if remove_name.strip() == "":
-            st.warning("Please enter an item name.")
-        else:
-            removed_item = st.session_state.closet.remove_item_by_name(remove_name)
-
-            if removed_item is None:
-                st.write("Item not found.")
-            else:
-                st.success(f"Removed: {removed_item.display()}")
+            with button_col:
+                st.write("")
+                st.write("")
+                if st.button("Remove", key=f"remove_{item.get_name()}"):
+                    removed_item = st.session_state.closet.remove_item_by_name(item.get_name())
+                    if removed_item is not None:
+                        st.success(f"Removed: {removed_item.get_name()}")
+                        st.rerun()
 
 # ------------------------
 # GENERATE OUTFIT SECTION
@@ -197,23 +218,26 @@ else:
 
             if not outfit:
                 st.write("No matching outfit could be generated.")
-                st.write("You need at least a top, bottom, and shoes that fit the same occasion and weather.")
+                st.write("You need at least a top, bottom, and shoes that all fit the selected occasion and weather.")
             else:
                 st.write("Suggested outfit:")
                 for category, item in outfit.items():
-                    st.write(f"{category}: {item.display()}")
+                    st.markdown("---")
+                    st.write(f"**{category}: {item.get_name()}**")
+                    st.write(f"Occasions: {', '.join(item.get_occasions())}")
+                    st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
-                    if item.get_image_path():
-                        st.image(item.get_image_path(), width=150)
+                    if item.get_image_data() is not None:
+                        st.image(item.get_image_data(), width=180)
+                    else:
+                        st.write("No image uploaded")
 
     else:
-        items = st.session_state.closet.get_all_items()
+        item_names = st.session_state.closet.get_item_names()
 
-        if not items:
+        if not item_names:
             st.write("Your closet is empty. Add some items first.")
         else:
-            item_names = st.session_state.closet.get_item_names()
-
             selected_item_name = st.selectbox(
                 "Choose an item you want to wear",
                 item_names
@@ -231,7 +255,12 @@ else:
                 else:
                     st.write("Suggested outfit:")
                     for category, item in outfit.items():
-                        st.write(f"{category}: {item.display()}")
+                        st.markdown("---")
+                        st.write(f"**{category}: {item.get_name()}**")
+                        st.write(f"Occasions: {', '.join(item.get_occasions())}")
+                        st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
-                        if item.get_image_path():
-                            st.image(item.get_image_path(), width=150)
+                        if item.get_image_data() is not None:
+                            st.image(item.get_image_data(), width=180)
+                        else:
+                            st.write("No image uploaded")
