@@ -3,6 +3,19 @@ from closet import Closet
 from models import Top, Bottom, Shoes, Jacket
 from outfit import OutfitGenerator
 
+# Push everything lower
+st.markdown("<div style='margin-top: 140px;'></div>", unsafe_allow_html=True)
+
+# Centered huge logo
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("logo.png", use_container_width=True)
+
+# Subtitle
+st.markdown(
+    "<p style='text-align: center; font-size:18px; color: #6b7280;'>Organize your closet and generate outfits!</p>",
+    unsafe_allow_html=True
+)
 # run:
 # source .venv/bin/activate
 # python -m streamlit run app.py
@@ -46,8 +59,6 @@ def clean_item_name(raw_name):
     return cleaned_name
 
 
-st.title("My Closet App 👕")
-st.write("Organize your closet and generate outfits.")
 
 option = st.selectbox(
     "Menu",
