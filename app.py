@@ -3,6 +3,17 @@ from closet import Closet
 from models import Top, Bottom, Shoes, Jacket
 from outfit import OutfitGenerator
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #e6f2ff;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Push everything lower
 st.markdown("<div style='margin-top: 140px;'></div>", unsafe_allow_html=True)
 
@@ -60,7 +71,7 @@ def clean_item_name(raw_name):
 
 
 
-option = st.selectbox(
+option = st.sidebar.selectbox(
     "Menu",
     ["Add Item", "View Closet", "Generate Outfit"]
 )
@@ -69,7 +80,7 @@ option = st.selectbox(
 # ADD ITEM SECTION
 # ------------------------
 if option == "Add Item":
-    st.subheader("Add New Item")
+    st.subheader("➕ Add New Item")
 
     with st.form(key=f"add_item_form_{st.session_state.save_counter}", clear_on_submit=True):
         name = st.text_input("Item name")
@@ -126,7 +137,7 @@ if option == "Add Item":
 # VIEW CLOSET SECTION
 # ------------------------
 elif option == "View Closet":
-    st.subheader("Your Closet")
+    st.subheader("👕 Your Closet")
 
     item_count = st.session_state.closet.count_items()
     st.write(f"Total items in closet: {item_count}")
@@ -172,37 +183,49 @@ elif option == "View Closet":
     if not filtered_items:
         st.info("No matching items found.")
     else:
-        for item in filtered_items:
-            st.markdown("---")
+        for row_start in range(0, len(filtered_items), 3):
+            cols = st.columns(3)
+            row_items = filtered_items[row_start:row_start + 3]
 
-            image_col, info_col, button_col = st.columns([1, 2, 1])
+            for col, item in zip(cols, row_items):
+                with col:
+                    st.markdown(
+                        """
+                        <div style="
+                            background-color: white;
+                            padding: 15px;
+                            border-radius: 15px;
+                            margin-bottom: 15px;
+                            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+                        ">
+                        """,
+                        unsafe_allow_html=True
+                    )
 
-            with image_col:
-                if item.get_image_data() is not None:
-                    st.image(item.get_image_data(), width=180)
-                else:
-                    st.write("No image uploaded")
+                    st.markdown(f"### {item.get_name()}")
 
-            with info_col:
-                st.markdown(f"### {item.get_name()}")
-                st.write(f"**Category:** {item.get_category()}")
-                st.write(f"**Occasions:** {', '.join(item.get_occasions())}")
-                st.write(f"**Weather:** {', '.join(item.get_weather_categories())}")
+                    if item.get_image_data() is not None:
+                        st.image(item.get_image_data(), use_container_width=True)
+                    else:
+                        st.write("No image")
 
-            with button_col:
-                st.write("")
-                st.write("")
-                if st.button("Remove", key=f"remove_{item.get_name()}"):
-                    removed_item = st.session_state.closet.remove_item_by_name(item.get_name())
-                    if removed_item is not None:
-                        st.success(f"Removed: {removed_item.get_name()}")
-                        st.rerun()
+                    st.write(f"**Category:** {item.get_category()}")
+                    st.write(f"**Occasions:** {', '.join(item.get_occasions())}")
+                    st.write(f"**Weather:** {', '.join(item.get_weather_categories())}")
+
+                    if st.button("Remove", key=f"remove_{item.get_name()}"):
+                        removed_item = st.session_state.closet.remove_item_by_name(item.get_name())
+                        if removed_item is not None:
+                            st.success(f"Removed: {removed_item.get_name()}")
+                            st.rerun()
+
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 # ------------------------
 # GENERATE OUTFIT SECTION
 # ------------------------
 else:
-    st.subheader("Generate Outfit")
+    st.subheader("✨ Generate Outfit")
 
     generation_mode = st.radio(
         "Choose outfit generation mode",
@@ -232,22 +255,27 @@ else:
                 st.write("You need at least a top, bottom, and shoes that all fit the selected occasion and weather.")
             else:
                 st.write("Suggested outfit:")
-                for category, item in outfit.items():
-                    st.markdown("---")
-                    st.write(f"**{category}: {item.get_name()}**")
-                    st.write(f"Occasions: {', '.join(item.get_occasions())}")
-                    st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
-                    if item.get_image_data() is not None:
-                        st.image(item.get_image_data(), width=180)
-                    else:
-                        st.write("No image uploaded")
+                cols = st.columns(len(outfit))
+
+                for col, (category, item) in zip(cols, outfit.items()):
+                    with col:
+                        st.markdown(f"### {category}")
+
+                        if item.get_image_data() is not None:
+                            st.image(item.get_image_data(), use_container_width=True)
+                        else:
+                            st.write("No image uploaded")
+
+                        st.write(f"**{item.get_name()}**")
+                        st.write(f"Occasions: {', '.join(item.get_occasions())}")
+                        st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
     else:
         item_names = st.session_state.closet.get_item_names()
 
         if not item_names:
-            st.write("Your closet is empty. Add some items first.")
+            st.info("👕 Your closet is empty. Add some items first.")
         else:
             selected_item_name = st.selectbox(
                 "Choose an item you want to wear",
@@ -265,13 +293,18 @@ else:
                     st.write("Make sure your closet has other items with overlapping occasion and weather tags.")
                 else:
                     st.write("Suggested outfit:")
-                    for category, item in outfit.items():
-                        st.markdown("---")
-                        st.write(f"**{category}: {item.get_name()}**")
-                        st.write(f"Occasions: {', '.join(item.get_occasions())}")
-                        st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
-                        if item.get_image_data() is not None:
-                            st.image(item.get_image_data(), width=180)
-                        else:
-                            st.write("No image uploaded")
+                    cols = st.columns(len(outfit))
+
+                    for col, (category, item) in zip(cols, outfit.items()):
+                        with col:
+                            st.markdown(f"### {category}")
+
+                            if item.get_image_data() is not None:
+                                st.image(item.get_image_data(), use_container_width=True)
+                            else:
+                                st.write("No image uploaded")
+
+                            st.write(f"**{item.get_name()}**")
+                            st.write(f"Occasions: {', '.join(item.get_occasions())}")
+                            st.write(f"Weather: {', '.join(item.get_weather_categories())}")
