@@ -6,7 +6,6 @@ class ClothingItem:
         self.__weather_categories = weather_categories
         self.__image_data = image_data
 
-    # Getters
     def get_name(self):
         return self.__name
 
@@ -22,7 +21,6 @@ class ClothingItem:
     def get_image_data(self):
         return self.__image_data
 
-    # Setters
     def set_occasions(self, new_occasions):
         if len(new_occasions) > 0:
             self.__occasions = new_occasions
@@ -35,6 +33,15 @@ class ClothingItem:
         occasions_text = ", ".join(self.__occasions)
         weather_text = ", ".join(self.__weather_categories)
         return f"{self.__name} ({self.__category}) | Occasions: {occasions_text} | Weather: {weather_text}"
+
+    def to_dict(self):
+        return {
+            "name": self.__name,
+            "category": self.__category,
+            "occasions": self.__occasions,
+            "weather_categories": self.__weather_categories,
+            "image_data": self.__image_data.hex() if self.__image_data is not None else None
+        }
 
 
 class Top(ClothingItem):

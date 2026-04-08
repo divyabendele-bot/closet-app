@@ -9,36 +9,103 @@ st.markdown(
     .stApp {
         background-color: #e6f2ff;
     }
+
+    h1, h2, h3, h4, h5, h6, p, label, div, span {
+        color: #2f3b52;
+    }
+
+    section[data-testid="stSidebar"] {
+        background-color: #f5f9fc;
+    }
+
+    div[data-baseweb="input"] > div {
+        background-color: #ffffff !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        background-color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+    }
+
+    .stButton > button,
+    .stFormSubmitButton > button {
+        background-color: #ffffff !important;
+        color: #2f3b52 !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+
+    .stButton > button:hover,
+    .stFormSubmitButton > button:hover {
+        background-color: #f3f4f6 !important;
+    }
+
+    .stTextInput label,
+    .stSelectbox label,
+    .stMultiSelect label,
+    .stFileUploader label {
+        color: #2f3b52 !important;
+        font-weight: 500;
+    }
+
+    div[data-testid="stHorizontalBlock"] div[data-testid="column"]:last-child .stButton > button {
+        background-color: #e74c3c !important;
+        color: white !important;
+    }
+
+    div[data-testid="stHorizontalBlock"] div[data-testid="column"]:last-child .stButton > button:hover {
+        background-color: #c0392b !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Push everything lower
 st.markdown("<div style='margin-top: 140px;'></div>", unsafe_allow_html=True)
 
-# Centered huge logo
-col1, col2, col3 = st.columns([1,2,1])
+col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.image("logo.png", use_container_width=True)
 
-# Subtitle
 st.markdown(
-    "<p style='text-align: center; font-size:18px; color: #6b7280;'>Organize your closet and generate outfits!</p>",
+    "<p style='text-align: center; font-size:18px; color: #2f3b52;'>Organize your closet and generate outfits!</p>",
     unsafe_allow_html=True
 )
+
 # run:
 # source .venv/bin/activate
 # python -m streamlit run app.py
 
 if "closet" not in st.session_state:
     st.session_state.closet = Closet()
+    st.session_state.closet.load_from_file()
 
 if "generator" not in st.session_state:
     st.session_state.generator = OutfitGenerator()
 
 if "save_counter" not in st.session_state:
     st.session_state.save_counter = 0
+
+if "save_message" not in st.session_state:
+    st.session_state.save_message = ""
+
+if "selected_build_item" not in st.session_state:
+    st.session_state.selected_build_item = None
+
+if "build_outfit_result" not in st.session_state:
+    st.session_state.build_outfit_result = None
+
+if "show_outfit_dialog" not in st.session_state:
+    st.session_state.show_outfit_dialog = False
 
 OCCASION_OPTIONS = [
     "Business",
@@ -70,6 +137,109 @@ def clean_item_name(raw_name):
     return cleaned_name
 
 
+def generate_build_outfit(selected_item_name):
+    st.session_state.selected_build_item = selected_item_name
+    st.session_state.build_outfit_result = st.session_state.generator.generate_outfit_from_item(
+        selected_item_name,
+        st.session_state.closet
+    )
+    st.session_state.show_outfit_dialog = True
+
+
+def close_outfit_dialog():
+    st.session_state.selected_build_item = None
+    st.session_state.build_outfit_result = None
+    st.session_state.show_outfit_dialog = False
+
+
+def display_outfit_cards(outfit):
+    cols = st.columns(len(outfit))
+
+    for col, (category, item) in zip(cols, outfit.items()):
+        with col:
+            st.markdown(f"### {category}")
+
+            if item.get_image_data() is not None:
+                st.image(item.get_image_data(), use_container_width=True)
+            else:
+                st.write("No image uploaded")
+
+            st.write(f"**{item.get_name()}**")
+            st.write(f"Occasions: {', '.join(item.get_occasions())}")
+            st.write(f"Weather: {', '.join(item.get_weather_categories())}")
+
+
+@st.dialog("Outfit Suggestion", dismissible=False)
+def show_outfit_dialog():
+    selected_item_name = st.session_state.selected_build_item
+    outfit = st.session_state.build_outfit_result
+
+    st.write(f"Built around: **{selected_item_name}**")
+
+    if not outfit:
+        st.write("No matching outfit could be generated from that item.")
+        st.write("Make sure your closet has other items with overlapping occasion and weather tags.")
+    else:
+        st.write("Suggested outfit:")
+        display_outfit_cards(outfit)
+
+    button_col1, button_col2 = st.columns(2)
+
+    with button_col1:
+        if st.button("Generate New One", key="dialog_generate_new"):
+            st.session_state.build_outfit_result = st.session_state.generator.generate_outfit_from_item(
+                selected_item_name,
+                st.session_state.closet
+            )
+            st.rerun()
+
+    with button_col2:
+        if st.button("Close", key="dialog_close"):
+            close_outfit_dialog()
+            st.rerun()
+
+
+def display_item_card(item, show_remove_button=False, remove_key_prefix="remove", build_key_prefix="build"):
+    st.markdown(
+        """
+        <div style="
+            background-color: white;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        ">
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(f"### {item.get_name()}")
+
+    if item.get_image_data() is not None:
+        st.image(item.get_image_data(), use_container_width=True)
+    else:
+        st.write("No image uploaded")
+
+    st.write(f"**Category:** {item.get_category()}")
+    st.write(f"**Occasions:** {', '.join(item.get_occasions())}")
+    st.write(f"**Weather:** {', '.join(item.get_weather_categories())}")
+
+    if show_remove_button:
+        if st.button("Remove", key=f"{remove_key_prefix}_{item.get_name()}"):
+            removed_item = st.session_state.closet.remove_item_by_name(item.get_name())
+            if removed_item is not None:
+                st.session_state.closet.save_to_file()
+                if st.session_state.selected_build_item == removed_item.get_name():
+                    close_outfit_dialog()
+                st.success(f"Removed: {removed_item.get_name()}")
+                st.rerun()
+    else:
+        if st.button("Build around this item", key=f"{build_key_prefix}_{item.get_name()}"):
+            generate_build_outfit(item.get_name())
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 option = st.sidebar.selectbox(
     "Menu",
@@ -80,7 +250,14 @@ option = st.sidebar.selectbox(
 # ADD ITEM SECTION
 # ------------------------
 if option == "Add Item":
-    st.subheader("➕ Add New Item")
+    if st.session_state.show_outfit_dialog:
+        close_outfit_dialog()
+
+    st.subheader("Add New Item")
+
+    if st.session_state.save_message != "":
+        st.success(st.session_state.save_message)
+        st.session_state.save_message = ""
 
     with st.form(key=f"add_item_form_{st.session_state.save_counter}", clear_on_submit=True):
         name = st.text_input("Item name")
@@ -130,14 +307,19 @@ if option == "Add Item":
                     item = Jacket(final_name, occasions, weather_categories, image_data)
 
                 st.session_state.closet.add_item(item)
-                st.success(f"Saved: {item.display()}")
+                st.session_state.closet.save_to_file()
+                st.session_state.save_message = f"Saved: {item.display()}"
                 st.session_state.save_counter += 1
+                st.rerun()
 
 # ------------------------
 # VIEW CLOSET SECTION
 # ------------------------
 elif option == "View Closet":
-    st.subheader("👕 Your Closet")
+    if st.session_state.show_outfit_dialog:
+        close_outfit_dialog()
+
+    st.subheader("Your Closet")
 
     item_count = st.session_state.closet.count_items()
     st.write(f"Total items in closet: {item_count}")
@@ -189,43 +371,17 @@ elif option == "View Closet":
 
             for col, item in zip(cols, row_items):
                 with col:
-                    st.markdown(
-                        """
-                        <div style="
-                            background-color: white;
-                            padding: 15px;
-                            border-radius: 15px;
-                            margin-bottom: 15px;
-                            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-                        ">
-                        """,
-                        unsafe_allow_html=True
+                    display_item_card(
+                        item,
+                        show_remove_button=True,
+                        remove_key_prefix="remove_closet"
                     )
-
-                    st.markdown(f"### {item.get_name()}")
-
-                    if item.get_image_data() is not None:
-                        st.image(item.get_image_data(), use_container_width=True)
-                    else:
-                        st.write("No image")
-
-                    st.write(f"**Category:** {item.get_category()}")
-                    st.write(f"**Occasions:** {', '.join(item.get_occasions())}")
-                    st.write(f"**Weather:** {', '.join(item.get_weather_categories())}")
-
-                    if st.button("Remove", key=f"remove_{item.get_name()}"):
-                        removed_item = st.session_state.closet.remove_item_by_name(item.get_name())
-                        if removed_item is not None:
-                            st.success(f"Removed: {removed_item.get_name()}")
-                            st.rerun()
-
-                    st.markdown("</div>", unsafe_allow_html=True)
 
 # ------------------------
 # GENERATE OUTFIT SECTION
 # ------------------------
 else:
-    st.subheader("✨ Generate Outfit")
+    st.subheader("Generate Outfit")
 
     generation_mode = st.radio(
         "Choose outfit generation mode",
@@ -251,60 +407,54 @@ else:
             )
 
             if not outfit:
+                st.session_state.build_outfit_result = None
+                st.session_state.selected_build_item = None
+                st.session_state.show_outfit_dialog = False
                 st.write("No matching outfit could be generated.")
                 st.write("You need at least a top, bottom, and shoes that all fit the selected occasion and weather.")
             else:
                 st.write("Suggested outfit:")
-
-                cols = st.columns(len(outfit))
-
-                for col, (category, item) in zip(cols, outfit.items()):
-                    with col:
-                        st.markdown(f"### {category}")
-
-                        if item.get_image_data() is not None:
-                            st.image(item.get_image_data(), use_container_width=True)
-                        else:
-                            st.write("No image uploaded")
-
-                        st.write(f"**{item.get_name()}**")
-                        st.write(f"Occasions: {', '.join(item.get_occasions())}")
-                        st.write(f"Weather: {', '.join(item.get_weather_categories())}")
+                display_outfit_cards(outfit)
 
     else:
         item_names = st.session_state.closet.get_item_names()
 
         if not item_names:
-            st.info("👕 Your closet is empty. Add some items first.")
+            st.info("Your closet is empty. Add some items first.")
         else:
-            selected_item_name = st.selectbox(
-                "Choose an item you want to wear",
-                item_names
+            filter_category = st.selectbox(
+                "Filter items by category",
+                ["All"] + CATEGORY_OPTIONS,
+                key="build_filter_category"
             )
 
-            if st.button("Build Outfit Around Item"):
-                outfit = st.session_state.generator.generate_outfit_from_item(
-                    selected_item_name,
-                    st.session_state.closet
-                )
+            selectable_items = st.session_state.closet.get_filtered_items(
+                category=filter_category,
+                occasion="All",
+                weather="All"
+            )
 
-                if not outfit:
-                    st.write("No matching outfit could be generated from that item.")
-                    st.write("Make sure your closet has other items with overlapping occasion and weather tags.")
-                else:
-                    st.write("Suggested outfit:")
+            selectable_items = sorted(
+                selectable_items,
+                key=lambda item: item.get_name().lower()
+            )
 
-                    cols = st.columns(len(outfit))
+            if not selectable_items:
+                st.info("No items found in this category.")
+            else:
+                st.write("Choose the item you want to wear:")
 
-                    for col, (category, item) in zip(cols, outfit.items()):
+                for row_start in range(0, len(selectable_items), 3):
+                    cols = st.columns(3)
+                    row_items = selectable_items[row_start:row_start + 3]
+
+                    for col, item in zip(cols, row_items):
                         with col:
-                            st.markdown(f"### {category}")
+                            display_item_card(
+                                item,
+                                show_remove_button=False,
+                                build_key_prefix="build_outfit"
+                            )
 
-                            if item.get_image_data() is not None:
-                                st.image(item.get_image_data(), use_container_width=True)
-                            else:
-                                st.write("No image uploaded")
-
-                            st.write(f"**{item.get_name()}**")
-                            st.write(f"Occasions: {', '.join(item.get_occasions())}")
-                            st.write(f"Weather: {', '.join(item.get_weather_categories())}")
+if st.session_state.show_outfit_dialog:
+    show_outfit_dialog()

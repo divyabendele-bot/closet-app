@@ -1,6 +1,5 @@
 import random
 
-
 class OutfitGenerator:
     def generate_new_outfit(self, occasion, weather, closet):
         matching_items = closet.get_filtered_items(
