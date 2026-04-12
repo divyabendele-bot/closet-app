@@ -1,6 +1,8 @@
 import random
 
+#logic for outfit creation
 class OutfitGenerator:
+    #method for generating outfit when user picks an occasion and weather
     def generate_new_outfit(self, occasion, weather, closet):
         matching_items = closet.get_filtered_items(
             category="All",
@@ -13,6 +15,7 @@ class OutfitGenerator:
         shoes = []
         jackets = []
 
+        #creates list from each item   
         for item in matching_items:
             if item.get_category() == "Top":
                 tops.append(item)
@@ -26,6 +29,7 @@ class OutfitGenerator:
         if not tops or not bottoms or not shoes:
             return None
 
+        #randomly selects an outfit from the options 
         outfit = {
             "Top": random.choice(tops),
             "Bottom": random.choice(bottoms),
@@ -37,6 +41,7 @@ class OutfitGenerator:
 
         return outfit
 
+    #feature to check if items match one occasion and oe weather as the selected item
     def item_matches_selected_vibe(self, candidate_item, selected_item):
         occasion_match = False
         weather_match = False
@@ -53,7 +58,8 @@ class OutfitGenerator:
             return True
         else:
             return False
-
+    
+    #user picks an item and outfit is built around it 
     def generate_outfit_from_item(self, item_name, closet):
         selected_item = closet.get_item_by_name(item_name)
 
@@ -65,6 +71,7 @@ class OutfitGenerator:
         shoes = []
         jackets = []
 
+        #lists with all available items that have same occasion and weather 
         for item in closet.get_all_items():
             if item.get_name() != selected_item.get_name():
                 if self.item_matches_selected_vibe(item, selected_item):
@@ -79,6 +86,7 @@ class OutfitGenerator:
 
         outfit = {}
 
+        #selecteed item will be included in the final version
         if selected_item.get_category() == "Top":
             outfit["Top"] = selected_item
         elif selected_item.get_category() == "Bottom":
@@ -88,6 +96,7 @@ class OutfitGenerator:
         elif selected_item.get_category() == "Jacket":
             outfit["Jacket"] = selected_item
 
+        #chooses matching clothing items 
         if "Top" not in outfit:
             if tops:
                 outfit["Top"] = random.choice(tops)

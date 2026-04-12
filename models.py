@@ -1,5 +1,7 @@
+#define base class clothing item the app will store 
 class ClothingItem:
     def __init__(self, name, category, occasions, weather_categories, image_data=None):
+        #clothing items will store name, category (top, bottom, etc), occasion, weather, and an image 
         self.__name = name
         self.__category = category
         self.__occasions = occasions
@@ -21,6 +23,7 @@ class ClothingItem:
     def get_image_data(self):
         return self.__image_data
 
+    #setters to use if app was developed further; allows changes 
     def set_occasions(self, new_occasions):
         if len(new_occasions) > 0:
             self.__occasions = new_occasions
@@ -28,12 +31,14 @@ class ClothingItem:
     def set_weather_categories(self, new_weather_categories):
         if len(new_weather_categories) > 0:
             self.__weather_categories = new_weather_categories
-
+    
+    #displays the item description
     def display(self):
         occasions_text = ", ".join(self.__occasions)
         weather_text = ", ".join(self.__weather_categories)
         return f"{self.__name} ({self.__category}) | Occasions: {occasions_text} | Weather: {weather_text}"
 
+    #converts object as dictionary to be used by JSON to save objects 
     def to_dict(self):
         return {
             "name": self.__name,
@@ -43,7 +48,7 @@ class ClothingItem:
             "image_data": self.__image_data.hex() if self.__image_data is not None else None
         }
 
-
+#define subclasses top, bottoms, shoes, and jackets (inheritance)
 class Top(ClothingItem):
     def __init__(self, name, occasions, weather_categories, image_data=None):
         super().__init__(name, "Top", occasions, weather_categories, image_data)

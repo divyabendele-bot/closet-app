@@ -3,6 +3,7 @@ from closet import Closet
 from models import Top, Bottom, Shoes, Jacket
 from outfit import OutfitGenerator
 
+#CSS code that will be plugged into Streamlit to edit the UI 
 st.markdown(
     """
     <style>
@@ -85,6 +86,7 @@ st.markdown(
 # source .venv/bin/activate
 # python -m streamlit run app.py
 
+#keep info between reruns 
 if "closet" not in st.session_state:
     st.session_state.closet = Closet()
     st.session_state.closet.load_from_file()
@@ -127,7 +129,7 @@ CATEGORY_OPTIONS = [
     "Jacket"
 ]
 
-
+#cleans up user input
 def clean_item_name(raw_name):
     cleaned_name = raw_name.strip()
 
@@ -136,7 +138,7 @@ def clean_item_name(raw_name):
 
     return cleaned_name
 
-
+#session state for user building around an item, prepare pop up result
 def generate_build_outfit(selected_item_name):
     st.session_state.selected_build_item = selected_item_name
     st.session_state.build_outfit_result = st.session_state.generator.generate_outfit_from_item(
@@ -145,13 +147,13 @@ def generate_build_outfit(selected_item_name):
     )
     st.session_state.show_outfit_dialog = True
 
-
+#close pop up 
 def close_outfit_dialog():
     st.session_state.selected_build_item = None
     st.session_state.build_outfit_result = None
     st.session_state.show_outfit_dialog = False
 
-
+#displays the clothes 
 def display_outfit_cards(outfit):
     cols = st.columns(len(outfit))
 
@@ -168,7 +170,7 @@ def display_outfit_cards(outfit):
             st.write(f"Occasions: {', '.join(item.get_occasions())}")
             st.write(f"Weather: {', '.join(item.get_weather_categories())}")
 
-
+#create pop up window 
 @st.dialog("Outfit Suggestion", dismissible=False)
 def show_outfit_dialog():
     selected_item_name = st.session_state.selected_build_item
@@ -240,15 +242,13 @@ def display_item_card(item, show_remove_button=False, remove_key_prefix="remove"
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-
+#displays the sidebar options
 option = st.sidebar.selectbox(
     "Menu",
     ["Add Item", "View Closet", "Generate Outfit"]
 )
 
-# ------------------------
-# ADD ITEM SECTION
-# ------------------------
+# Add item to closet 
 if option == "Add Item":
     if st.session_state.show_outfit_dialog:
         close_outfit_dialog()
@@ -312,9 +312,8 @@ if option == "Add Item":
                 st.session_state.save_counter += 1
                 st.rerun()
 
-# ------------------------
-# VIEW CLOSET SECTION
-# ------------------------
+
+#View Closet 
 elif option == "View Closet":
     if st.session_state.show_outfit_dialog:
         close_outfit_dialog()
@@ -377,9 +376,7 @@ elif option == "View Closet":
                         remove_key_prefix="remove_closet"
                     )
 
-# ------------------------
-# GENERATE OUTFIT SECTION
-# ------------------------
+#Generate an outfit 
 else:
     st.subheader("Generate Outfit")
 
@@ -387,7 +384,7 @@ else:
         "Choose outfit generation mode",
         ["Generate from occasion + weather", "Build around one item"]
     )
-
+    #generate from occasion and weather 
     if generation_mode == "Generate from occasion + weather":
         occasion_choice = st.selectbox(
             "Choose an occasion",
@@ -415,7 +412,8 @@ else:
             else:
                 st.write("Suggested outfit:")
                 display_outfit_cards(outfit)
-
+                
+    #build around item 
     else:
         item_names = st.session_state.closet.get_item_names()
 

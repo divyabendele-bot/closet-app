@@ -3,7 +3,8 @@ import os
 import pickle
 from models import Top, Bottom, Shoes, Jacket
 
-
+#all operations that the closet will need 
+#add items, show items, remove items, sort and filter 
 class Closet:
     def __init__(self):
         self.__items = []
@@ -17,6 +18,7 @@ class Closet:
     def count_items(self):
         return len(self.__items)
 
+    #loops through items and gets names
     def get_item_names(self):
         names = []
         for item in self.__items:
@@ -44,9 +46,11 @@ class Closet:
 
         return None
 
+    #sorts items A-Z
     def get_items_sorted_by_name(self):
         return sorted(self.__items, key=lambda item: item.get_name().lower())
 
+    #filter to find items by a selected category/occasion/weather
     def get_filtered_items(self, category="All", occasion="All", weather="All"):
         filtered_items = []
 
@@ -69,6 +73,7 @@ class Closet:
 
         return filtered_items
 
+    #avoids duplicate names: items with same name will be name, name 2, name 3, etc
     def generate_unique_name(self, name):
         existing_names = self.get_item_names()
 
@@ -84,9 +89,11 @@ class Closet:
 
         return new_name
 
+    #converts items to dictionaries to save to JSON 
     def save_to_file(self, filename="closet_data.json"):
         data = []
 
+        #image bytes converted to string that JSON can save 
         for item in self.__items:
             image_data = item.get_image_data()
             image_hex = image_data.hex() if image_data is not None else None
@@ -104,6 +111,7 @@ class Closet:
         with open(filename, "w", encoding="utf-8") as file:
             json.dump(data, file)
 
+    #loading from JSON, else from pickle (issues with pickle, was replaced with JSON but fallback now)
     def load_from_file(self, json_filename="closet_data.json", pickle_filename="closet_data.pkl"):
         if os.path.exists(json_filename):
             self.load_from_json(json_filename)
