@@ -82,8 +82,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# run:
-# source .venv/bin/activate
+# to run the app, run:
 # python -m streamlit run app.py
 
 #keep info between reruns 
